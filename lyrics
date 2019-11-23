@@ -105,9 +105,15 @@ fetchSongsFromList() {
   # echo ${URLS[100]}
 
   select key in ${TITLES[@]}; do
-    echo "You picked ${REPLY}. Displaying lyrics of ${key}"
-    echo "============================================================="
-    lyricsDisplay
+    re='^[0-9]+$'
+    if [[ $REPLY =~ $re ]] && (("$REPLY" > "0")) && (("$REPLY" < "$count")); then
+      echo "You picked ${REPLY}. Displaying lyrics of ${key}"
+      echo "============================================================="
+      lyricsDisplay
+    else
+      error="Invalid number selected. Please input correct number."
+      invalid
+    fi
   done
 }
 
