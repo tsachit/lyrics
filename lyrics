@@ -3,13 +3,19 @@
 PROGNAME=$0
 SITE_URL="https://www.lyrics007.com"
 
-invalid() {
+errorWarning() {
   if [ -z "$error" -a "$error"!=" " ]; then
     error="Invalid command."
   fi
 
   cat << EOF >&2
 $error 
+EOF
+}
+
+invalid() {
+  errorWarning
+  cat << EOF >&2
 Try '$PROGNAME --help' for more information.
 EOF
   exit 1
@@ -66,6 +72,16 @@ checkEmptyTextAndClean() {
   fi
 }
 
+checkIfSearchIsEmpty () {
+  whiteSpaceCleaner
+  if [ -z "$text" -a "$text"!=" " ]; then
+    error="No result found, check the spelling and try again."
+    errorWarning
+    exit 1
+  fi
+}
+
+
 lyricsDisplay() {
   lyricsLink=${URLS[$REPLY]}
   lyrics=`curl -s --get "$SITE_URL$lyricsLink" | sed -n "/<div class=\"lyrics\">/,/<\/div>/p"| sed -e 's/<br>/\\\n/g' -e 's/<BR>/\\\n/g' | sed -e 's/<[^>]*>//g'`;
@@ -96,7 +112,9 @@ fetchSongsFromList() {
 }
 
 fetchSongsFromArtist() {
-  song=`curl -s --get "$SITE_URL/search.php?$string" | grep "scroll" | sed -n 's/.*href="\([^"]*\).*/\1/p'`;
+  text=`curl -s --get "$SITE_URL/search.php?$string" | sed -n "/<div class=\"scroll\">/,/<\/div>/p" | sed -e 's/<div[^>]*>//g' -e 's/<\/div>//g'`
+  checkIfSearchIsEmpty
+  song=`sed -n 's/.*href="\([^"]*\).*/\1/p' <<< $text`;
   actionList=`curl -s --get "$SITE_URL$song" | sed -n "/<ul class=\"song_title\">/,/<\/ul>/p" | sed "s/<a href/\\n<a href/g" | grep "a href"`
   list=`sed -e 's/<\/a>/ /g' -e 's/[<|>]//g' -e 's/a href=\"//g' -e 's/"/ /g' <<< $actionList`;
   # urls=`sed -e 's/.*href="\([^"]*\).*/\1/p' <<< $list`;
@@ -105,11 +123,11 @@ fetchSongsFromArtist() {
 }
 
 fetchSongsFromSongTitle() {
-  echo "$SITE_URL/search.php?$string"
-  # song=`curl -s --get "$SITE_URL/search.php?$string" | grep "scroll" | sed -n 's/.*href="\([^"]*\).*/\1/p'`;
-  text=`curl -s --get "https://www.lyrics007.com/search.php?category=song&q=best+of+me" | sed -n "/<div class=\"scroll\">/,/<\/div>/p" | sed -e 's/<div[^>]*>//g' | sed -e 's/<h2[^>]*>//g' -e 's/<\/h2[^>]*>/ - /g'`;
+  text=`curl -s --get "$SITE_URL/search.php?$string" | sed -n "/<div class=\"scroll\">/,/<\/div>/p" | sed -e 's/<div[^>]*>//g' -e 's/<\/div>//g'`
+  checkIfSearchIsEmpty
+  text=`sed -e 's/<h2[^>]*>//g' -e 's/<\/h2[^>]*>/ - /g' <<< $text`;
   whiteSpaceCleaner
-  actionList=`sed -e 's/<a href=\"/\\\n/g' -e 's/">/ /g' -e 's/<\/a>//g' -e 's/<\/div>//g' <<< $text`;
+  actionList=`sed -e 's/<a href=\"/\\\n/g' -e 's/">/ /g' -e 's/<\/a>//g' <<< $text`;
   list=`echo -en $actionList`
 
   fetchSongsFromList
