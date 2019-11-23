@@ -15,12 +15,19 @@ I love listening to music and I always keep forgetting the lyrics. Most of the t
 P.S. Make sure you have the correct permissions to run the script. See example
 
 
-#### Usage: lyrics [Artist Name] [Song Title] ####
+#### Usage: See help ####
+> lyrics --help
 
-#### Example: Get lyrics of New York by Frank Sinatra ####
-> lyrics "Frank Sinatra" "New York"
+#### Example: Get lyrics by Song Title ####
+> lyrics -s New York
 
-#### Example: Also works the other way around ####
-> lyrics "New York" "Frank Sinatra"
+#### Example: Get lyrics by Artist Name ####
+> lyrics -a Frank Sinatra
 
-#### Note: This does not work for artist name or song title with special characters. ####
+#### Example: Get lyrics by both Song title and Artist name ####
+> lyrics -b New York - Frank Sinatra
+
+#### Example: Also works swapping names ####
+> lyrics -b Frank Sinatra - New York
+
+#### Warning: This may not work for artist name or song title with special characters. ####
