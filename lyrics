@@ -1,17 +1,92 @@
-#!/bin/bash
-fetch_lyrics () {
-	song=`curl -s --get "https://makeitpersonal.co/lyrics" --data-urlencode "artist=$artist" --data-urlencode "title=$title"`;
+# #!/bin/bash
+# fetch_lyrics () {
+# 	song=`curl -s --get "https://makeitpersonal.co/lyrics" --data-urlencode "artist=$artist" --data-urlencode "title=$title"`;
+# }
+
+# artist=$1
+# title=$2
+# fetch_lyrics
+# if [ "$song" == "Sorry, We don't have lyrics for this song yet." ]; then
+# 	title=$1
+# 	artist=$2
+# 	fetch_lyrics
+# fi
+
+# echo -e "$artist - $title\n$song"
+
+
+# -----------------------------------------------------------------------------------------------------------
+
+
+
+# curl 'https://www.lyrics007.com/search.php?category=artist&q=michael+buble'
+
+#! /bin/sh -
+PROGNAME=$0
+
+invalid() {
+  if [ -z "$error" -a "$error"!=" " ]; then
+    error="Invalid command."
+  fi
+
+  cat << EOF >&2
+$error 
+Try '$PROGNAME --help' for more information.
+EOF
+  exit 1
 }
 
-artist=$1
-title=$2
-fetch_lyrics
-if [ "$song" == "Sorry, We don't have lyrics for this song yet." ]; then
-	title=$1
-	artist=$2
-	fetch_lyrics
-fi
+usage() {
+  cat << EOF >&2
+Usage: $PROGNAME [OPTIONS] [TEXT]
 
-echo -e "$artist - $title\n$song"
+Options (default value in (), *required):
+  -c, --clip                    List song by matching lyrics clip
+  -a, --artist                  List song by Artist's Name
+  -t, --title                   List song by matching title
+      --help                    display this help and exit
+EOF
+  exit 1
+}
 
+checkEmptyText() {
+  if [ -z "$text" -a "$text"!=" " ]; then
+    error="Invalid command, requires text to search."
+    invalid
+    exit 1
+  fi
+}
 
+searchFromClip() {
+  checkEmptyText
+  cat << EOF >&2
+The clip is $text
+EOF
+  exit 1
+}
+
+searchFromArtist() {
+  checkEmptyText
+  cat << EOF >&2
+The artist is $text
+EOF
+  exit 1
+}
+
+searchFromTitle() {
+  checkEmptyText
+  cat << EOF >&2
+The title is $text
+EOF
+  exit 1
+}
+
+while true; do
+  case $1 in
+    (-c|--clip) text=$2; searchFromClip;;
+    (-a|--artist) text=$2; searchFromArtist;;
+    (-t|--title) text=$2; searchFromTitle;;
+    (--help) usage;;
+    (*) invalid
+  esac
+done
