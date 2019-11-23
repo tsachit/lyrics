@@ -1,27 +1,5 @@
 #!/bin/bash
 
-# fetch_lyrics () {
-# 	song=`curl -s --get "https://makeitpersonal.co/lyrics" --data-urlencode "artist=$artist" --data-urlencode "title=$title"`;
-# }
-
-# artist=$1
-# title=$2
-# fetch_lyrics
-# if [ "$song" == "Sorry, We don't have lyrics for this song yet." ]; then
-# 	title=$1
-# 	artist=$2
-# 	fetch_lyrics
-# fi
-
-# echo -e "$artist - $title\n$song"
-
-
-# -----------------------------------------------------------------------------------------------------------
-
-
-
-# curl 'https://www.lyrics007.com/search.php?category=artist&q=michael+buble'
-
 PROGNAME=$0
 SITE_URL="https://www.lyrics007.com"
 
