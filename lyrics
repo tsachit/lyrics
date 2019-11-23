@@ -49,16 +49,33 @@ EOF
   exit 1
 }
 
-checkEmptyText() {
+
+sanitizeText() {
+  # removes extra white space
+  text="$(echo "${text}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  # converts to lowercase
+  text="$(echo "$text" | sed -e 's/\(.*\)/\L\1/')"
+  # converts internal space to plus for web search
+  text="$(echo "$text" | sed -e 's/\ /+/')"
+}
+
+checkEmptyTextAndClean() {
   if [ -z "$text" -a "$text"!=" " ]; then
     error="Invalid command, requires text to search."
     invalid
     exit 1
+  else
+    sanitizeText
   fi
 }
 
+fetchSongs() {
+  song=`curl -s --get "https://www.lyrics007.com/search.php?$string"`;
+  echo $song
+}
+
 searchFromClip() {
-  checkEmptyText
+  checkEmptyTextAndClean
   cat << EOF >&2
 The clip is $text
 EOF
@@ -66,15 +83,17 @@ EOF
 }
 
 searchFromArtist() {
-  checkEmptyText
+  checkEmptyTextAndClean
   cat << EOF >&2
 The artist is $text
 EOF
+  string="category=artist&q=$text"
+  fetchSongs
   exit 1
 }
 
 searchFromTitle() {
-  checkEmptyText
+  checkEmptyTextAndClean
   cat << EOF >&2
 The title is $text
 EOF
@@ -83,9 +102,9 @@ EOF
 
 while true; do
   case $1 in
-    (-c|--clip) text=$2; searchFromClip;;
-    (-a|--artist) text=$2; searchFromArtist;;
-    (-t|--title) text=$2; searchFromTitle;;
+    (-c|--clip) shift; text=$@; searchFromClip;;
+    (-a|--artist) shift; text=$@; searchFromArtist;;
+    (-t|--title) shift; text=$@; searchFromTitle;;
     (--help) usage;;
     (*) invalid
   esac
