@@ -42,7 +42,7 @@ usage() {
 Usage: $PROGNAME [OPTIONS] [TEXT]
 
 Options (default value in (), *required):
-  -c, --clip                    List song by matching lyrics clip
+  -c, --clip                    List song by matching lyrics clip (COMING SOON)
   -a, --artist                  List song by Artist's Name
   -t, --title                   List song by matching title
       --help                    display this help and exit
@@ -59,6 +59,10 @@ textChanger() {
   whiteSpaceCleaner
   # converts internal space to underscore for display
   text="$(echo "$text" | sed -e 's/\ /_/g')"
+  # this is the case for search by song title
+  if echo "$text" | grep -q "_-_"; then
+    text="$(echo -en "$text" | sed -e 's/_-_/(/g' | sed -e 's/$/)/g')"
+  fi
 }
 
 sanitizeText() {
@@ -86,13 +90,7 @@ lyricsDisplay() {
   exit 1
 }
 
-fetchSongs() {
-  song=`curl -s --get "$SITE_URL/search.php?$string" | grep "scroll" | sed -n 's/.*href="\([^"]*\).*/\1/p'`;
-  actionList=`curl -s --get "$SITE_URL$song" | sed -n "/<ul class=\"song_title\">/,/<\/ul>/p" | sed "s/<a href/\\n<a href/g" | grep "a href"`
-  list=`sed -e 's/<\/a>/ /g' -e 's/[<|>]//g' -e 's/a href=\"//g' -e 's/"/ /g' <<< $actionList`;
-  # urls=`sed -e 's/.*href="\([^"]*\).*/\1/p' <<< $list`;
-  # titles=`sed -e 's/<[^>]*>//g' <<< $list`;
-
+fetchSongsFromList() {
   count=1
   while IFS=" " read -r url text
   do 
@@ -114,10 +112,30 @@ fetchSongs() {
   done
 }
 
+fetchSongsFromArtist() {
+  song=`curl -s --get "$SITE_URL/search.php?$string" | grep "scroll" | sed -n 's/.*href="\([^"]*\).*/\1/p'`;
+  actionList=`curl -s --get "$SITE_URL$song" | sed -n "/<ul class=\"song_title\">/,/<\/ul>/p" | sed "s/<a href/\\n<a href/g" | grep "a href"`
+  list=`sed -e 's/<\/a>/ /g' -e 's/[<|>]//g' -e 's/a href=\"//g' -e 's/"/ /g' <<< $actionList`;
+  # urls=`sed -e 's/.*href="\([^"]*\).*/\1/p' <<< $list`;
+  # titles=`sed -e 's/<[^>]*>//g' <<< $list`;
+  fetchSongsFromList
+}
+
+fetchSongsFromSongTitle() {
+  echo "$SITE_URL/search.php?$string"
+  # song=`curl -s --get "$SITE_URL/search.php?$string" | grep "scroll" | sed -n 's/.*href="\([^"]*\).*/\1/p'`;
+  text=`curl -s --get "https://www.lyrics007.com/search.php?category=song&q=best+of+me" | sed -n "/<div class=\"scroll\">/,/<\/div>/p" | sed -e 's/<div[^>]*>//g' | sed -e 's/<h2[^>]*>//g' -e 's/<\/h2[^>]*>/ - /g'`;
+  whiteSpaceCleaner
+  actionList=`sed -e 's/<a href=\"/\\\n/g' -e 's/">/ /g' -e 's/<\/a>//g' -e 's/<\/div>//g' <<< $text`;
+  list=`echo -en $actionList`
+
+  fetchSongsFromList
+}
+
 searchFromClip() {
   checkEmptyTextAndClean
   cat << EOF >&2
-The clip is $text
+This feature is coming soon.
 EOF
   exit 1
 }
@@ -125,15 +143,14 @@ EOF
 searchFromArtist() {
   checkEmptyTextAndClean
   string="category=artist&q=$text"
-  fetchSongs
+  fetchSongsFromArtist
   exit 1
 }
 
 searchFromTitle() {
   checkEmptyTextAndClean
-  cat << EOF >&2
-The title is $text
-EOF
+  string="category=song&q=$text"
+  fetchSongsFromSongTitle
   exit 1
 }
 
