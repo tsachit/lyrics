@@ -1,4 +1,5 @@
-# #!/bin/bash
+#!/bin/bash
+
 # fetch_lyrics () {
 # 	song=`curl -s --get "https://makeitpersonal.co/lyrics" --data-urlencode "artist=$artist" --data-urlencode "title=$title"`;
 # }
@@ -21,8 +22,8 @@
 
 # curl 'https://www.lyrics007.com/search.php?category=artist&q=michael+buble'
 
-#! /bin/sh -
 PROGNAME=$0
+SITE_URL="https://www.lyrics007.com"
 
 invalid() {
   if [ -z "$error" -a "$error"!=" " ]; then
@@ -49,14 +50,23 @@ EOF
   exit 1
 }
 
+whiteSpaceCleaner() {
+  # removes extra white space
+  text="$(echo "$text" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+}
+
+textChanger() {
+  whiteSpaceCleaner
+  # converts internal space to underscore for display
+  text="$(echo "$text" | sed -e 's/\ /_/g')"
+}
 
 sanitizeText() {
-  # removes extra white space
-  text="$(echo "${text}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  whiteSpaceCleaner
   # converts to lowercase
-  text="$(echo "$text" | sed -e 's/\(.*\)/\L\1/')"
+  text="$(echo "$text" | sed -e 's/\(.*\)/\L\1/g')"
   # converts internal space to plus for web search
-  text="$(echo "$text" | sed -e 's/\ /+/')"
+  text="$(echo "$text" | sed -e 's/\ /+/g')"
 }
 
 checkEmptyTextAndClean() {
@@ -69,9 +79,39 @@ checkEmptyTextAndClean() {
   fi
 }
 
+lyricsDisplay() {
+  lyricsLink=${URLS[$REPLY]}
+  lyrics=`curl -s --get "$SITE_URL$lyricsLink" | sed -n "/<div class=\"lyrics\">/,/<\/div>/p"| sed -e 's/<br>/\\\n/g' -e 's/<BR>/\\\n/g' | sed -e 's/<[^>]*>//g'`;
+  echo -en " "$lyrics
+  exit 1
+}
+
 fetchSongs() {
-  song=`curl -s --get "https://www.lyrics007.com/search.php?$string"`;
-  echo $song
+  song=`curl -s --get "$SITE_URL/search.php?$string" | grep "scroll" | sed -n 's/.*href="\([^"]*\).*/\1/p'`;
+  actionList=`curl -s --get "$SITE_URL$song" | sed -n "/<ul class=\"song_title\">/,/<\/ul>/p" | sed "s/<a href/\\n<a href/g" | grep "a href"`
+  list=`sed -e 's/<\/a>/ /g' -e 's/[<|>]//g' -e 's/a href=\"//g' -e 's/"/ /g' <<< $actionList`;
+  # urls=`sed -e 's/.*href="\([^"]*\).*/\1/p' <<< $list`;
+  # titles=`sed -e 's/<[^>]*>//g' <<< $list`;
+
+  count=1
+  while IFS=" " read -r url text
+  do 
+    textChanger    
+    TITLES[`expr $count`]=$text
+    URLS[`expr $count`]=$url
+    # echo $text
+    count=`expr $count + 1`
+  done <<< "$list"
+
+  # echo $count
+  # echo ${TITLES[100]}
+  # echo ${URLS[100]}
+
+  select key in ${TITLES[@]}; do
+    echo "You picked ${REPLY}. Displaying lyrics of ${key}"
+    echo "============================================================="
+    lyricsDisplay
+  done
 }
 
 searchFromClip() {
@@ -84,9 +124,6 @@ EOF
 
 searchFromArtist() {
   checkEmptyTextAndClean
-  cat << EOF >&2
-The artist is $text
-EOF
   string="category=artist&q=$text"
   fetchSongs
   exit 1
