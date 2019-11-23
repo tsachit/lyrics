@@ -41,10 +41,10 @@ usage() {
   cat << EOF >&2
 Usage: $PROGNAME [OPTIONS] [TEXT]
 
-Options (default value in (), *required):
-  -c, --clip                    List song by matching lyrics clip (COMING SOON)
-  -a, --artist                  List song by Artist's Name
-  -t, --title                   List song by matching title
+Options:
+  -s, --song                    List song by matching song title
+  -a, --artist                  List song by Artist's name
+  -b, --both                    List song by matching both song and artist, separated by dash(-), any order.
       --help                    display this help and exit
 EOF
   exit 1
@@ -67,10 +67,15 @@ textChanger() {
 
 sanitizeText() {
   whiteSpaceCleaner
-  # converts to lowercase
-  text="$(echo "$text" | sed -e 's/\(.*\)/\L\1/g')"
-  # converts internal space to plus for web search
-  text="$(echo "$text" | sed -e 's/\ /+/g')"
+  if echo "$text" | grep -q " - "; then
+    title="$(echo "$text" | cut -d"-" -f1 | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    artist="$(echo "$text" | cut -d"-" -f2 | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  else
+    # converts to lowercase
+    text="$(echo "$text" | sed -e 's/\(.*\)/\L\1/g')"
+    # converts internal space to plus for web search
+    text="$(echo "$text" | sed -e 's/\ /+/g')"
+  fi
 }
 
 checkEmptyTextAndClean() {
@@ -132,11 +137,14 @@ fetchSongsFromSongTitle() {
   fetchSongsFromList
 }
 
-searchFromClip() {
+fetchSongsFromBothTitleAndArtist () {
+	song=`curl -s --get "https://makeitpersonal.co/lyrics" --data-urlencode "artist=$artist" --data-urlencode "title=$title"`;
+}
+
+searchFromTitle() {
   checkEmptyTextAndClean
-  cat << EOF >&2
-This feature is coming soon.
-EOF
+  string="category=song&q=$text"
+  fetchSongsFromSongTitle
   exit 1
 }
 
@@ -147,18 +155,37 @@ searchFromArtist() {
   exit 1
 }
 
-searchFromTitle() {
-  checkEmptyTextAndClean
-  string="category=song&q=$text"
-  fetchSongsFromSongTitle
+searchFromBothTitleAndArtist() {
+  if echo "$text" | grep -q " - "; then
+    checkEmptyTextAndClean
+    fetchSongsFromBothTitleAndArtist
+
+    if [ "$song" == "Sorry, We don't have lyrics for this song yet." ]; then
+      oldtitle=$artist
+      artist=$title
+      title=$oldtitle
+
+      fetchSongsFromBothTitleAndArtist
+    fi
+
+    if [ "$song" == "Sorry, We don't have lyrics for this song yet." ]; then
+      error="Sorry, We can't find the lyrics directly. You can search the lyrics by artist name or song title."
+      invalid
+    else
+      echo -en "$song"
+    fi
+  else
+    error="Invalid command, requires dash separated artist - title, or, title - artist. Example: $PROGNAME -b Frank Sinatra - New York"
+    invalid
+  fi
   exit 1
 }
 
 while true; do
   case $1 in
-    (-c|--clip) shift; text=$@; searchFromClip;;
+    (-s|--song) shift; text=$@; searchFromTitle;;
     (-a|--artist) shift; text=$@; searchFromArtist;;
-    (-t|--title) shift; text=$@; searchFromTitle;;
+    (-b|--both) shift; text=$@; searchFromBothTitleAndArtist;;
     (--help) usage;;
     (*) invalid
   esac
